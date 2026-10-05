@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeYield - Managed Crypto & Trading Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Growth Visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #060a12;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+
+        /* Custom Glowing Card Borders & Glassmorphism */
+        .neon-card {
+            background: rgba(13, 22, 38, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 180, 256, 0.25);
+            box-shadow: 0 0 15px rgba(0, 140, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .neon-card:hover {
+            border-color: rgba(0, 210, 255, 0.5);
+            box-shadow: 0 0 22px rgba(0, 180, 255, 0.2);
+        }
+
+        .neon-card-glow {
+            background: linear-gradient(135deg, rgba(13, 27, 49, 0.9) 0%, rgba(8, 16, 31, 0.95) 100%);
+            border: 1px solid rgba(0, 212, 255, 0.4);
+            box-shadow: 0 0 25px rgba(0, 162, 255, 0.15);
+        }
+
+        /* Neon Button Styling */
+        .btn-neon-primary {
+            background: linear-gradient(135deg, #0088ff 0%, #00d4ff 100%);
+            color: #ffffff;
+            box-shadow: 0 0 15px rgba(0, 180, 255, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .btn-neon-primary:hover {
+            box-shadow: 0 0 25px rgba(0, 212, 255, 0.7);
+            transform: translateY(-1px);
+        }
+
+        .btn-neon-outline {
+            background: rgba(0, 140, 255, 0.08);
+            border: 1px solid rgba(0, 212, 255, 0.5);
+            color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 180, 255, 0.1);
+        }
+
+        .btn-neon-outline:hover {
+            background: rgba(0, 180, 255, 0.2);
+            color: #ffffff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #060a12;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #0088ff;
+        }
+
+        /* Pulse animation for live status */
+        @keyframes pulse-cyan {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.1); }
+        }
+        .live-pulse {
+            animation: pulse-cyan 2s infinite ease-in-out;
+        }
+
+        /* Floating background graphics */
+        .bull-bg-watermark {
+            background-image: url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80');
+            background-size: cover;
+            background-position: center;
+            opacity: 0.08;
+            mix-blend-mode: luminosity;
+        }
+    </style>
+</head>
+<body class="relative min-h-screen pb-20 md:pb-6">
+
+    <header class="sticky top-0 z-30 bg-[#070c16]/90 backdrop-blur-md border-b border-cyan-900/30 px-4 py-3 md:px-8">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            
+            <!-- Left Branding & Mobile Toggle -->
+            <div class="flex items-center gap-3">
+                <button id="mobileSidebarToggle" class="md:hidden text-gray-300 hover:text-cyan-400 focus:outline-none p-2 rounded-lg bg-gray-900/50">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <div class="flex items-center gap-2">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                        <i class="fa-solid fa-chart-line text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <span class="text-xl font-extrabold tracking-wide text-white">Trade<span class="text-cyan-400">Yield</span></span>
+                        <span class="hidden sm:inline-block ml-2 text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">Pro V2.4</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right User Info & Quick Action -->
+            <div class="flex items-center gap-4">
+                <button onclick="toggleModal('notificationModal')" class="relative p-2 rounded-xl bg-slate-900/80 text-gray-300 hover:text-cyan-400 border border-slate-800 transition">
+                    <i class="fa-regular fa-bell text-lg"></i>
+                    <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400 live-pulse"></span>
+                </button>
+
+                <div class="flex items-center gap-3 pl-3 border-l border-slate-800">
+                    <div class="relative">
+                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" alt="Avatar" class="w-10 h-10 rounded-full border-2 border-cyan-400 object-cover shadow-md shadow-cyan-500/20">
+                        <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-slate-900"></span>
+                    </div>
+                    <div class="hidden sm:block">
+                        <h4 class="text-sm font-semibold text-white leading-none">Robert Johnson</h4>
+                        <span class="text-xs text-cyan-400 font-medium">VIP Tier 1</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto flex gap-6 px-4 py-6 md:px-8">
+
+        <!-- Sidebar Navigation (Desktop Floating / Mobile Drawer) -->
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-[#0a101d] border-r border-cyan-900/30 p-5 transform -translate-x-full transition-transform duration-300 md:relative md:translate-x-0 md:bg-transparent md:border-r-0 md:p-0 md:w-60 shrink-0">
+            <div class="flex justify-between items-center mb-6 md:hidden">
+                <span class="text-lg font-bold text-cyan-400">Navigation Menu</span>
+                <button id="closeSidebar" class="text-gray-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- User Profile Summary in Mobile Nav -->
+            <div class="mb-6 p-3 rounded-xl bg-slate-900/60 border border-slate-800 md:hidden">
+                <div class="flex items-center gap-3">
+                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" class="w-10 h-10 rounded-full border border-cyan-400">
+                    <div>
+                        <p class="text-sm font-bold text-white">Robert Johnson</p>
+                        <p class="text-xs text-emerald-400">● Account Verified</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="space-y-1.5">
+                <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-cyan-950/60 text-cyan-300 font-semibold border border-cyan-700/40 shadow-lg shadow-cyan-950/50">
+                    <i class="fa-solid fa-chart-pie text-cyan-400"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#projects" class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-slate-900/80 hover:text-cyan-300 transition">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span>Invested Pools</span>
+                </a>
+                <a href="#referrals" class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-slate-900/80 hover:text-cyan-300 transition">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Referral Program</span>
+                </a>
+                <a href="#" onclick="toggleModal('verificationModal')" class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-slate-900/80 hover:text-cyan-300 transition">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>Verification (KYC)</span>
+                </a>
+                <a href="#" onclick="toggleModal('aboutUsModal')" class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-slate-900/80 hover:text-cyan-300 transition">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>About Strategy</span>
+                </a>
+            </nav>
+
+            <div class="mt-8 pt-6 border-t border-slate-800/80">
+                <button onclick="handleLogout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-rose-400 hover:bg-rose-950/30 border border-transparent hover:border-rose-900/40 transition">
+                    <i class="fa-solid fa-power-off"></i>
+                    <span class="font-medium">Logout</span>
+                </button>
+            </div>
+
+            <!-- Live Status Box -->
+            <div class="mt-8 p-4 rounded-xl neon-card hidden md:block text-xs">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-gray-400">Yield Engine:</span>
+                    <span class="text-emerald-400 font-bold flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 live-pulse"></span> Active
+                    </span>
+                </div>
+                <p class="text-slate-400">Auto-incrementing daily profit ledger every 24h.</p>
+            </div>
+        </aside>
+
+        <main class="flex-1 min-w-0">
+            
+            <!-- Hero Bull / Financial Header Banner -->
+            <div class="relative overflow-hidden rounded-2xl neon-card-glow p-6 mb-6">
+                <div class="absolute inset-0 bull-bg-watermark"></div>
+                <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-xs font-bold uppercase tracking-wider text-cyan-400">Managed Capital Account</span>
+                            <span class="bg-cyan-900/50 text-cyan-300 text-[10px] px-2 py-0.5 rounded-full border border-cyan-700">Auto-Yield On</span>
+                        </div>
+                        <h1 class="text-2xl md:text-3xl font-extrabold text-white">Welcome, Robert Johnson</h1>
+                        <p class="text-xs md:text-sm text-slate-400 mt-1">Real-time off-chain investment ledger & Binance yield portal.</p>
+                    </div>
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <button onclick="toggleModal('depositModal')" class="flex-1 sm:flex-none btn-neon-primary px-5 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-circle-plus"></i>
+                            <span>Deposit</span>
+                        </button>
+                        <button onclick="toggleModal('withdrawModal')" class="flex-1 sm:flex-none btn-neon-outline px-5 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-circle-arrow-up"></i>
+                            <span>Withdraw</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                
+                <!-- Card 1: Total Investment -->
+                <div class="neon-card p-5 rounded-2xl relative overflow-hidden">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-semibold text-slate-400">Total Investment</span>
+                        <div class="w-8 h-8 rounded-lg bg-cyan-950/80 border border-cyan-800/60 flex items-center justify-center text-cyan-400">
+                            <i class="fa-solid fa-vault"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-2xl font-extrabold text-white" id="totalInvestmentDisplay">$4,500.00</span>
+                        <span class="text-xs text-cyan-400 font-semibold">USDT</span>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between text-xs border-t border-slate-800/80 pt-2">
+                        <span class="text-slate-400">Capital Locked</span>
+                        <span class="text-emerald-400 font-medium"><i class="fa-solid fa-lock text-[10px]"></i> Active</span>
+                    </div>
+                </div>
+
+                <!-- Card 2: Today's Earnings (Daily Increment simulated live) -->
+                <div class="neon-card p-5 rounded-2xl relative overflow-hidden">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-semibold text-slate-400">Today's Profit Earnings</span>
+                        <div class="w-8 h-8 rounded-lg bg-emerald-950/80 border border-emerald-800/60 flex items-center justify-center text-emerald-400">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-2xl font-extrabold text-emerald-400" id="todayEarningsDisplay">$1,350.00</span>
+                        <span class="text-xs bg-emerald-950 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-800 font-bold">+1.5%</span>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between text-xs border-t border-slate-800/80 pt-2">
+                        <span class="text-slate-400">Next Payout:</span>
+                        <span class="text-cyan-400 font-semibold" id="countdownTimer">23h 41m 10s</span>
+                    </div>
+                </div>
+
+                <!-- Card 3: Referral Earnings -->
+                <div class="neon-card p-5 rounded-2xl relative overflow-hidden">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-semibold text-slate-400">Referral Commission</span>
+                        <div class="w-8 h-8 rounded-lg bg-blue-950/80 border border-blue-800/60 flex items-center justify-center text-blue-400">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-2xl font-extrabold text-white" id="referralEarningsDisplay">$500.00</span>
+                        <span class="text-xs text-blue-400 font-semibold">USDT</span>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between text-xs border-t border-slate-800/80 pt-2">
+                        <span class="text-slate-400">Direct Bonus Rate</span>
+                        <span class="text-blue-400 font-bold">20.0%</span>
+                    </div>
+                </div>
+
+                <!-- Card 4: Total Withdrawable Balance -->
+                <div class="neon-card p-5 rounded-2xl relative overflow-hidden bg-gradient-to-br from-cyan-950/30 to-slate-900/60">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-semibold text-cyan-300">Withdrawable Balance</span>
+                        <div class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-cyan-300">
+                            <i class="fa-solid fa-wallet"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-2xl font-extrabold text-cyan-300" id="withdrawableBalanceDisplay">$6,350.00</span>
+                        <span class="text-xs text-cyan-400 font-semibold">USDT</span>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between text-xs border-t border-cyan-900/40 pt-2">
+                        <span class="text-slate-400">Binance Cashout</span>
+                        <span class="text-emerald-400 font-semibold"><i class="fa-solid fa-check"></i> Ready</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                
+                <!-- Chart Area (2 Cols) -->
+                <div class="lg:col-span-2 neon-card p-5 rounded-2xl">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                        <div>
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-chart-area text-cyan-400"></i> Performance & Growth Trajectory
+                            </h3>
+                            <p class="text-xs text-slate-400">Weekly compound interest and daily ledger logs.</p>
+                        </div>
+                        <div class="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
+                            <button onclick="updateChart('7D')" class="px-3 py-1 rounded-lg bg-cyan-600 text-white font-medium shadow-sm">7D</button>
+                            <button onclick="updateChart('1M')" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white">1M</button>
+                            <button onclick="updateChart('ALL')" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white">ALL</button>
+                        </div>
+                    </div>
+                    <div class="h-60 w-full">
+                        <canvas id="growthChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Referral Quick Box (1 Col) -->
+                <div id="referrals" class="neon-card p-5 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-share-nodes text-blue-400"></i> Referral System
+                            </h3>
+                            <span class="text-xs bg-blue-950 text-blue-300 px-2 py-0.5 rounded-full border border-blue-800">Earn 20%</span>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Share your personal invitation code. Receive instant commission when referred clients deposit funds into the managed trading pool.
+                        </p>
+
+                        <!-- Referral Link Input -->
+                        <div class="mb-4">
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Your Referral Link</label>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="referralInput" readonly value="https://tradeyield.io/register?ref=RJ9942" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-cyan-300 font-mono focus:outline-none">
+                                <button onclick="copyReferralLink()" class="btn-neon-primary px-4 py-2 rounded-xl text-xs font-bold shrink-0">
+                                    <i class="fa-solid fa-copy"></i> Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Referral Mini Stats -->
+                    <div class="grid grid-cols-2 gap-3 pt-3 border-t border-slate-800/80">
+                        <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 text-center">
+                            <span class="block text-[11px] text-slate-400">Total Referred</span>
+                            <span class="text-lg font-bold text-white">12 Users</span>
+                        </div>
+                        <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 text-center">
+                            <span class="block text-[11px] text-slate-400">Comm. Earned</span>
+                            <span class="text-lg font-bold text-emerald-400">$500.00</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="projects" class="neon-card p-5 rounded-2xl mb-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 pb-4 border-b border-slate-800">
+                    <div>
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-briefcase text-cyan-400"></i> Managed Investment Allocation
+                        </h3>
+                        <p class="text-xs text-slate-400">Real-world business & algorithmic trading portfolio deployment.</p>
+                    </div>
+
+                    <!-- Category Tabs -->
+                    <div class="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                        <button onclick="switchTab('all')" id="tab-all" class="px-4 py-1.5 rounded-xl text-xs font-semibold bg-cyan-600 text-white shadow-md">All Projects</button>
+                        <button onclick="switchTab('forex')" id="tab-forex" class="px-4 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 border border-slate-800 hover:text-white">Forex & Arbitrage</button>
+                        <button onclick="switchTab('crypto')" id="tab-crypto" class="px-4 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 border border-slate-800 hover:text-white">External Ventures</button>
+                    </div>
+                </div>
+
+                <!-- Projects Table / List -->
+                <div class="space-y-3">
+                    
+                    <!-- Project 1 -->
+                    <div class="project-card all forex p-4 rounded-xl bg-slate-900/50 border border-slate-800 hover:border-cyan-800/60 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-800 flex items-center justify-center text-cyan-400 shrink-0">
+                                <i class="fa-solid fa-arrow-trend-up text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                                    Project Alpha: High-Frequency Forex Arbitrage
+                                    <span class="bg-emerald-950 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-800">85% Funded</span>
+                                </h4>
+                                <p class="text-xs text-slate-400 mt-0.5">Automated EUR/USD & GBP/USD liquidity pools running on MT5 bridge.</p>
+                            </div>
+                        </div>
+
+                        <div class="w-full md:w-64">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-400">Pool Allocation</span>
+                                <span class="text-cyan-400 font-semibold">$2,500.00 / $3,000.00</span>
+                            </div>
+                            <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                                <div class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full" style="width: 85%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="text-left md:text-right shrink-0">
+                            <span class="block text-xs text-slate-400">Est. Daily Yield</span>
+                            <span class="text-sm font-extrabold text-emerald-400">+1.6% Daily</span>
+                        </div>
+                    </div>
+
+                    <!-- Project 2 -->
+                    <div class="project-card all crypto p-4 rounded-xl bg-slate-900/50 border border-slate-800 hover:border-cyan-800/60 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-blue-950 border border-blue-800 flex items-center justify-center text-blue-400 shrink-0">
+                                <i class="fa-solid fa-microchip text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                                    Project Beta: E-Commerce & GPU Infrastructure
+                                    <span class="bg-cyan-950 text-cyan-300 text-[10px] px-2 py-0.5 rounded-full border border-cyan-800">70% Funded</span>
+                                </h4>
+                                <p class="text-xs text-slate-400 mt-0.5">Off-chain capital deployment in high-yield server hardware leasing.</p>
+                            </div>
+                        </div>
+
+                        <div class="w-full md:w-64">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-400">Pool Allocation</span>
+                                <span class="text-cyan-400 font-semibold">$1,400.00 / $2,000.00</span>
+                            </div>
+                            <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                                <div class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full rounded-full" style="width: 70%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="text-left md:text-right shrink-0">
+                            <span class="block text-xs text-slate-400">Est. Daily Yield</span>
+                            <span class="text-sm font-extrabold text-emerald-400">+1.4% Daily</span>
+                        </div>
+                    </div>
+
+                    <!-- Project 3 -->
+                    <div class="project-card all crypto p-4 rounded-xl bg-slate-900/50 border border-slate-800 hover:border-cyan-800/60 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-400 shrink-0">
+                                <i class="fa-solid fa-coins text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                                    Project Gamma: Liquidity Staking Vault
+                                    <span class="bg-purple-950 text-purple-300 text-[10px] px-2 py-0.5 rounded-full border border-purple-800">40% Funded</span>
+                                </h4>
+                                <p class="text-xs text-slate-400 mt-0.5">Binance USDT automated liquidity pool market making.</p>
+                            </div>
+                        </div>
+
+                        <div class="w-full md:w-64">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-400">Pool Allocation</span>
+                                <span class="text-purple-400 font-semibold">$600.00 / $1,500.00</span>
+                            </div>
+                            <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                                <div class="bg-gradient-to-r from-purple-500 to-cyan-400 h-full rounded-full" style="width: 40%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="text-left md:text-right shrink-0">
+                            <span class="block text-xs text-slate-400">Est. Daily Yield</span>
+                            <span class="text-sm font-extrabold text-emerald-400">+1.8% Daily</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="neon-card p-5 rounded-2xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i> Audit Ledger & History
+                    </h3>
+                    <span class="text-xs text-slate-400">Showing last 4 logs</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400 uppercase tracking-wider">
+                                <th class="py-3 px-3">Type</th>
+                                <th class="py-3 px-3">Transaction ID / Note</th>
+                                <th class="py-3 px-3">Amount</th>
+                                <th class="py-3 px-3">Date</th>
+                                <th class="py-3 px-3 text-right">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/60 text-slate-300" id="transactionTableBody">
+                            <tr class="hover:bg-slate-900/40">
+                                <td class="py-3 px-3 font-semibold text-emerald-400 flex items-center gap-2">
+                                    <i class="fa-solid fa-arrow-down-left text-emerald-500"></i> Daily Yield
+                                </td>
+                                <td class="py-3 px-3 font-mono text-slate-400">LEDGER-INCREMENT-8829</td>
+                                <td class="py-3 px-3 font-bold text-white">+$67.50 USDT</td>
+                                <td class="py-3 px-3 text-slate-400">Today, 00:00 AM</td>
+                                <td class="py-3 px-3 text-right">
+                                    <span class="bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800">Approved</span>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-900/40">
+                                <td class="py-3 px-3 font-semibold text-blue-400 flex items-center gap-2">
+                                    <i class="fa-solid fa-users text-blue-500"></i> Referral Bonus
+                                </td>
+                                <td class="py-3 px-3 font-mono text-slate-400">REF-COMM-USER103</td>
+                                <td class="py-3 px-3 font-bold text-white">+$20.00 USDT</td>
+                                <td class="py-3 px-3 text-slate-400">Yesterday</td>
+                                <td class="py-3 px-3 text-right">
+                                    <span class="bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800">Approved</span>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-900/40">
+                                <td class="py-3 px-3 font-semibold text-cyan-400 flex items-center gap-2">
+                                    <i class="fa-solid fa-plus text-cyan-500"></i> Deposit (Binance)
+                                </td>
+                                <td class="py-3 px-3 font-mono text-slate-400">0x8a91b...3e7d</td>
+                                <td class="py-3 px-3 font-bold text-white">+$50.00 USDT</td>
+                                <td class="py-3 px-3 text-slate-400">3 days ago</td>
+                                <td class="py-3 px-3 text-right">
+                                    <span class="bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800">Approved</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <div class="fixed bottom-0 inset-x-0 z-30 bg-[#070c16]/95 border-t border-cyan-900/40 py-2 px-4 md:hidden backdrop-blur-lg">
+        <div class="flex justify-around items-center text-center">
+            <a href="#" class="text-cyan-400 flex flex-col items-center gap-1 text-[10px] font-semibold">
+                <i class="fa-solid fa-house text-lg"></i>
+                <span>Home</span>
+            </a>
+            <a href="#projects" class="text-slate-400 hover:text-cyan-400 flex flex-col items-center gap-1 text-[10px]">
+                <i class="fa-solid fa-chart-simple text-lg"></i>
+                <span>Pools</span>
+            </a>
+            <button onclick="toggleModal('depositModal')" class="bg-gradient-to-tr from-cyan-600 to-blue-500 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/40 -mt-5 border-2 border-slate-900">
+                <i class="fa-solid fa-plus text-lg"></i>
+            </button>
+            <a href="#referrals" class="text-slate-400 hover:text-cyan-400 flex flex-col items-center gap-1 text-[10px]">
+                <i class="fa-solid fa-users text-lg"></i>
+                <span>Referral</span>
+            </a>
+            <button onclick="toggleModal('verificationModal')" class="text-slate-400 hover:text-cyan-400 flex flex-col items-center gap-1 text-[10px]">
+                <i class="fa-solid fa-user-gear text-lg"></i>
+                <span>Profile</span>
+            </button>
+        </div>
+    </div>
+
+    
+    <!-- 1. DEPOSIT MODAL -->
+    <div id="depositModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+        <div class="neon-card bg-[#0b1322] max-w-md w-full p-6 rounded-2xl relative border border-cyan-500/40">
+            <button onclick="toggleModal('depositModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-800 flex items-center justify-center text-cyan-400">
+                    <i class="fa-solid fa-qrcode text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-white">Deposit USDT</h3>
+                    <p class="text-xs text-slate-400">Transfer from Binance or external wallet.</p>
+                </div>
+            </div>
+
+            <!-- Binance Deposit Info Box -->
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 text-center mb-4">
+                <p class="text-xs text-cyan-400 font-semibold mb-2">Owner Binance USDT Receive Address (TRC-20)</p>
+                <!-- QR Code Placeholder -->
+                <div class="bg-white p-2 w-32 h-32 mx-auto rounded-xl shadow-md mb-3 flex items-center justify-center">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TY82aN81mXpZkLqW902MvPqX2104" alt="Binance Deposit QR" class="w-full h-full object-contain">
+                </div>
+                <div class="flex items-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800">
+                    <span class="text-[11px] font-mono text-slate-300 truncate">TY82aN81mXpZkLqW902MvPqX2104</span>
+                    <button onclick="copyToClipboard('TY82aN81mXpZkLqW902MvPqX2104')" class="text-xs text-cyan-400 hover:text-white shrink-0 font-bold">Copy</button>
+                </div>
+            </div>
+
+            <!-- Deposit Form -->
+            <form onsubmit="handleDepositSubmit(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Deposit Amount (USDT)</label>
+                    <input type="number" min="10" required placeholder="e.g. 50" id="depositAmountInput" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Transaction Hash (TxID) / Binance Pay ID</label>
+                    <input type="text" required placeholder="Paste transaction hash or Order ID" id="txIdInput" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Payment Proof Screenshot (Optional)</label>
+                    <input type="file" class="w-full text-xs text-slate-400 bg-slate-900 border border-slate-700 rounded-xl p-2 file:mr-3 file:py-1 file:px-2 file:rounded-lg file:border-0 file:bg-cyan-950 file:text-cyan-300 file:font-semibold">
+                </div>
+
+                <button type="submit" class="w-full btn-neon-primary py-3 rounded-xl font-bold text-sm mt-2">
+                    Submit Deposit Verification
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. WITHDRAWAL MODAL -->
+    <div id="withdrawModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+        <div class="neon-card bg-[#0b1322] max-w-md w-full p-6 rounded-2xl relative border border-cyan-500/40">
+            <button onclick="toggleModal('withdrawModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-800 flex items-center justify-center text-cyan-400">
+                    <i class="fa-solid fa-money-bill-transfer text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-white">Withdraw Profit & Funds</h3>
+                    <p class="text-xs text-slate-400">Weekly cashout directly to your Binance wallet.</p>
+                </div>
+            </div>
+
+            <form onsubmit="handleWithdrawSubmit(event)" class="space-y-3">
+                <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs">
+                    <span class="text-slate-400">Available Balance:</span>
+                    <span class="font-bold text-cyan-300 ml-1">$6,350.00 USDT</span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Withdrawal Amount (USDT)</label>
+                    <input type="number" min="10" max="6350" required placeholder="e.g. 100" id="withdrawAmountInput" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Your Binance Pay ID / USDT Address</label>
+                    <input type="text" required placeholder="Enter Binance Pay ID or TRC20 address" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none">
+                </div>
+
+                <div class="p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl text-[11px] text-amber-300">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> Cashout requests are reviewed by the admin team and dispatched via Binance within 12 hours.
+                </div>
+
+                <button type="submit" class="w-full btn-neon-primary py-3 rounded-xl font-bold text-sm mt-2">
+                    Request Payout
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. VERIFICATION (KYC) MODAL -->
+    <div id="verificationModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+        <div class="neon-card bg-[#0b1322] max-w-md w-full p-6 rounded-2xl relative">
+            <button onclick="toggleModal('verificationModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <h3 class="text-lg font-bold text-white mb-2"><i class="fa-solid fa-id-card text-cyan-400 mr-2"></i>Account Identity Status</h3>
+            <div class="p-4 bg-emerald-950/40 border border-emerald-800 rounded-xl text-center">
+                <i class="fa-solid fa-circle-check text-3xl text-emerald-400 mb-2"></i>
+                <h4 class="text-sm font-bold text-white">Tier 1 Verification Approved</h4>
+                <p class="text-xs text-slate-400 mt-1">Your identity is linked to Binance Account UID #8849201.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. ABOUT STRATEGY MODAL -->
+    <div id="aboutUsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+        <div class="neon-card bg-[#0b1322] max-w-md w-full p-6 rounded-2xl relative">
+            <button onclick="toggleModal('aboutUsModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <h3 class="text-lg font-bold text-white mb-2"><i class="fa-solid fa-vault text-cyan-400 mr-2"></i>Trading Engine Model</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+                TradeYield operates on a managed capital model. Deposited funds are routed directly into liquidity ventures, Forex arbitrage pools, and digital server leasing projects. The database tracks individual client performance daily while capital works off-chain.
+            </p>
+        </div>
+    </div>
+
+    <!-- 5. NOTIFICATION MODAL -->
+    <div id="notificationModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+        <div class="neon-card bg-[#0b1322] max-w-md w-full p-6 rounded-2xl relative">
+            <button onclick="toggleModal('notificationModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <h3 class="text-base font-bold text-white mb-3"><i class="fa-solid fa-bell text-cyan-400 mr-2"></i>System Notifications</h3>
+            <div class="space-y-2 text-xs">
+                <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+                    <p class="font-bold text-emerald-400">Daily Yield Credited</p>
+                    <p class="text-slate-400 mt-0.5 font-mono">+$67.50 USDT added to your profit ledger.</p>
+                </div>
+                <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+                    <p class="font-bold text-cyan-400">Referral Joined</p>
+                    <p class="text-slate-400 mt-0.5">User 'client_029' registered using your link.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Toast Message Notification Container -->
+    <div id="toast" class="fixed bottom-20 right-4 md:bottom-8 md:right-8 z-50 bg-cyan-950 border border-cyan-500 text-cyan-200 px-4 py-3 rounded-xl shadow-2xl transition-all transform translate-y-20 opacity-0 flex items-center gap-3">
+        <i class="fa-solid fa-circle-check text-cyan-400 text-lg"></i>
+        <span id="toastMessage" class="text-xs font-semibold">Action executed successfully.</span>
+    </div>
+
+    <script>
+        // State variables
+        let totalInvestment = 4500.00;
+        let todayEarnings = 1350.00;
+        let withdrawableBalance = 6350.00;
+
+        // Initialize Chart.js Growth Visualization
+        let ctx = document.getElementById('growthChart').getContext('2d');
+        let growthChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Portfolio Valuation (USDT)',
+                    data: [5800, 5920, 6050, 6120, 6210, 6290, 6350],
+                    borderColor: '#00d4ff',
+                    backgroundColor: 'rgba(0, 212, 255, 0.08)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#0088ff',
+                    pointBorderColor: '#ffffff',
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8', font: { size: 11 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8', font: { size: 11 } }
+                    }
+                }
+            }
+        });
+
+        // Tab Switching for Managed Pools
+        function switchTab(category) {
+            const tabs = ['all', 'forex', 'crypto'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if (t === category) {
+                    btn.className = "px-4 py-1.5 rounded-xl text-xs font-semibold bg-cyan-600 text-white shadow-md";
+                } else {
+                    btn.className = "px-4 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 border border-slate-800 hover:text-white";
+                }
+            });
+
+            const cards = document.querySelectorAll('.project-card');
+            cards.forEach(card => {
+                if (category === 'all' || card.classList.contains(category)) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // Modal Toggling Helper
+        function toggleModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.toggle('hidden');
+        }
+
+        // Copy Referral Link to Clipboard
+        function copyReferralLink() {
+            const copyText = document.getElementById("referralInput");
+            copyText.select();
+            document.execCommand("copy");
+            showToast("Referral link copied to clipboard!");
+        }
+
+        // Copy Helper
+        function copyToClipboard(text) {
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = text;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+            showToast("Binance USDT Address copied!");
+        }
+
+        // Display Floating Toast Messages
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMessage');
+            toastMsg.innerText = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // Deposit Simulation Handler
+        function handleDepositSubmit(e) {
+            e.preventDefault();
+            const amount = parseFloat(document.getElementById('depositAmountInput').value);
+            const txId = document.getElementById('txIdInput').value;
+
+            // Instantly simulate database balance update for demonstration
+            totalInvestment += amount;
+            withdrawableBalance += amount;
+
+            document.getElementById('totalInvestmentDisplay').innerText = `$${totalInvestment.toFixed(2)}`;
+            document.getElementById('withdrawableBalanceDisplay').innerText = `$${withdrawableBalance.toFixed(2)}`;
+
+            // Add log row to table
+            const table = document.getElementById('transactionTableBody');
+            const newRow = document.createElement('tr');
+            newRow.className = "hover:bg-slate-900/40";
+            newRow.innerHTML = `
+                <td class="py-3 px-3 font-semibold text-cyan-400 flex items-center gap-2">
+                    <i class="fa-solid fa-plus text-cyan-500"></i> Deposit (Binance)
+                </td>
+                <td class="py-3 px-3 font-mono text-slate-400">${txId.substring(0, 10)}...</td>
+                <td class="py-3 px-3 font-bold text-white">+$${amount.toFixed(2)} USDT</td>
+                <td class="py-3 px-3 text-slate-400">Just Now</td>
+                <td class="py-3 px-3 text-right">
+                    <span class="bg-amber-950 text-amber-300 px-2 py-0.5 rounded border border-amber-800">Pending Review</span>
+                </td>
+            `;
+            table.insertBefore(newRow, table.firstChild);
+
+            toggleModal('depositModal');
+            showToast("Deposit submitted! Admin will verify on Binance.");
+            document.getElementById('depositAmountInput').value = '';
+            document.getElementById('txIdInput').value = '';
+        }
+
+        // Withdrawal Simulation Handler
+        function handleWithdrawSubmit(e) {
+            e.preventDefault();
+            const amount = parseFloat(document.getElementById('withdrawAmountInput').value);
+            if (amount > withdrawableBalance) {
+                showToast("Insufficient withdrawable balance!");
+                return;
+            }
+
+            withdrawableBalance -= amount;
+            document.getElementById('withdrawableBalanceDisplay').innerText = `$${withdrawableBalance.toFixed(2)}`;
+
+            toggleModal('withdrawModal');
+            showToast("Withdrawal request dispatched to admin queue.");
+            document.getElementById('withdrawAmountInput').value = '';
+        }
+
+        // Mobile Sidebar Drawer Controls
+        document.getElementById('mobileSidebarToggle').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.remove('-translate-x-full');
+        });
+
+        document.getElementById('closeSidebar').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.add('-translate-x-full');
+        });
+
+        // Logout Simulation
+        function handleLogout() {
+            showToast("Logged out safely.");
+        }
+
+        // Live Simulated Incremental Counter (Demonstrating daily profit engine concept)
+        setInterval(() => {
+            // Adds small cents continuously to simulate live algorithmic trading growth
+            todayEarnings += 0.02;
+            withdrawableBalance += 0.02;
+            document.getElementById('todayEarningsDisplay').innerText = `$${todayEarnings.toFixed(2)}`;
+            document.getElementById('withdrawableBalanceDisplay').innerText = `$${withdrawableBalance.toFixed(2)}`;
+        }, 4000);
+
+        // Chart Filter Handler
+        function updateChart(timeframe) {
+            if (timeframe === '7D') {
+                growthChart.data.datasets[0].data = [5800, 5920, 6050, 6120, 6210, 6290, 6350];
+            } else if (timeframe === '1M') {
+                growthChart.data.datasets[0].data = [4500, 4800, 5200, 5600, 5900, 6100, 6350];
+            } else {
+                growthChart.data.datasets[0].data = [1000, 2200, 3400, 4100, 5000, 5800, 6350];
+            }
+            growthChart.update();
+        }
+    </script>
+</body>
+</html>
