@@ -9,6 +9,8 @@ import walletRoutes from './src/routes/walletRoutes.js';
 import depositRoutes from './src/routes/depositRoutes.js';
 import webhookRoutes from './src/routes/webhookRoutes.js';
 import withdrawalRoutes from './src/routes/withdrawalRoutes.js';
+import adminRoutes from './src/routes/adminRoutes.js';
+import referralRoutes from './src/routes/referralRoutes.js';
 
 import errorHandler from './src/middleware/errorHandler.js';
 import { initYieldCron } from './src/jobs/yieldCron.js';
@@ -28,6 +30,8 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/deposits', depositRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/withdrawals', withdrawalRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/referrals', referralRoutes);
 
 // Health Check
 app.get('/', (req, res) => {
