@@ -3,15 +3,67 @@ import Wallet from '../models/Wallet.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import Referral from '../models/Referral.js';
-import { DAILY_YIELD_RATE, REFERRAL_DAILY_PASSIVE_USD, MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
+import {
+  DAILY_YIELD_RATE,
+  REFERRAL_DIRECT_BONUS_FLAT,
+  REFERRAL_DAILY_PASSIVE_USD,
+  MINIMUM_INITIAL_DEPOSIT,
+} from '../config/constants.js';
 
 // Calculate tier floor yield ($300-$399 = $3, $400-$499 = $4, etc.)
 export const calculateTierYield = (balance) => {
   if (balance < MINIMUM_INITIAL_DEPOSIT) return 0;
-  
+
   // Floor down to nearest $100 bracket
   const baseTier = Math.floor(balance / 100) * 100;
   return baseTier * DAILY_YIELD_RATE; // e.g., 300 * 0.01 = $3.00
+};
+
+// Check and trigger flat $50 direct referral bonuses once referred user completes 24h holding period
+export const processPendingDirectReferrals = async () => {
+  const pendingReferrals = await Referral.find({ hasTriggeredInitialBonus: false });
+
+  for (const ref of pendingReferrals) {
+    const userB = await User.findById(ref.referredUser);
+    const walletB = await Wallet.findOne({ user: ref.referredUser });
+
+    if (userB && walletB) {
+      const isBalanceEligible = walletB.mainBalance >= MINIMUM_INITIAL_DEPOSIT;
+
+      let hasStayed24Hours = false;
+      if (userB.firstDepositAt) {
+        const hoursElapsed = (new Date() - new Date(userB.firstDepositAt)) / (1000 * 60 * 60);
+        hasStayed24Hours = hoursElapsed >= 24;
+      }
+
+      // Check condition: User B maintained $300+ for at least 24 hours
+      if (isBalanceEligible && hasStayed24Hours) {
+        const walletA = await Wallet.findOne({ user: ref.referrer });
+
+        if (walletA) {
+          // Credit flat $50 directly to referrer's referral balance
+          walletA.referralBalance += REFERRAL_DIRECT_BONUS_FLAT;
+          await walletA.save();
+
+          // Log transaction record
+          await Transaction.create({
+            user: ref.referrer,
+            type: 'REFERRAL_DIRECT_BONUS',
+            amount: REFERRAL_DIRECT_BONUS_FLAT,
+            description: `Flat $50 direct referral reward credited (Referred user maintained $300+ for 24h)`,
+          });
+
+          // Mark bonus as triggered and qualify referrer for daily $0.20 passive rewards
+          ref.hasTriggeredInitialBonus = true;
+          ref.isPassiveEligible = true;
+          ref.totalEarnedFromUser += REFERRAL_DIRECT_BONUS_FLAT;
+          await ref.save();
+
+          console.log(`[Referral System] Unlocked $50 direct bonus for referrer ${ref.referrer}`);
+        }
+      }
+    }
+  }
 };
 
 // Process daily returns across all eligible active accounts
@@ -19,7 +71,10 @@ export const processDailyYields = async () => {
   console.log('--- Starting Daily Yield Calculation Cron Job ---');
 
   try {
-    // 1. Fetch all wallets with mainBalance >= $300
+    // Step 1: Evaluate & payout qualifying flat $50 direct referral bonuses
+    await processPendingDirectReferrals();
+
+    // Step 2: Fetch all wallets with mainBalance >= $300
     const eligibleWallets = await Wallet.find({ mainBalance: { $gte: MINIMUM_INITIAL_DEPOSIT } }).populate('user');
 
     let processedCount = 0;
@@ -55,12 +110,12 @@ export const processDailyYields = async () => {
       }
     }
 
-    // 2. Process Company-Funded $0.20 Daily Passive Referral Bonuses
+    // Step 3: Process Company-Funded $0.20 Daily Passive Referral Bonuses
     const activeReferrals = await Referral.find({ isPassiveEligible: true });
     let referralBonusCount = 0;
 
     for (const ref of activeReferrals) {
-      // Confirm the downstream referred user is still maintains >= $300 balance
+      // Confirm the downstream referred user still maintains >= $300 balance
       const downstreamWallet = await Wallet.findOne({ user: ref.referredUser });
 
       if (downstreamWallet && downstreamWallet.mainBalance >= MINIMUM_INITIAL_DEPOSIT) {
@@ -89,7 +144,11 @@ export const processDailyYields = async () => {
       }
     }
 
-    console.log(`--- Daily Yield Complete: ${processedCount} users paid ($${totalYieldDistributed.toFixed(2)} USDT), ${referralBonusCount} referral payouts issued ---`);
+    console.log(
+      `--- Daily Yield Complete: ${processedCount} users paid ($${totalYieldDistributed.toFixed(
+        2
+      )} USDT), ${referralBonusCount} daily passive referral payouts issued ---`
+    );
     return { processedCount, totalYieldDistributed, referralBonusCount };
   } catch (error) {
     console.error('Error during daily yield calculation:', error.message);

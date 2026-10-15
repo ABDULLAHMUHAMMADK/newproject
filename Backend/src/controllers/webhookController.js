@@ -2,11 +2,10 @@
 import Wallet from '../models/Wallet.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
-import Referral from '../models/Referral.js';
 import { generateBinanceSignature } from '../config/binance.js';
 import { sendEmail } from '../services/emailService.js';
 import { depositApprovedTemplate } from '../utils/emailTemplates.js';
-import { MINIMUM_INITIAL_DEPOSIT, DAILY_YIELD_RATE, REFERRAL_DIRECT_PERCENTAGE } from '../config/constants.js';
+import { MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
 
 // @desc    Receive instant payment notification from Binance Pay Webhook
 // @route   POST /api/webhooks/binance
@@ -58,42 +57,11 @@ export const handleBinanceWebhook = async (req, res) => {
       wallet.mainBalance += depositAmount;
       await wallet.save();
 
-      // Check if account hit >= $300 threshold for the first time
+      // If hitting >= $300 for the first time, record timestamp for 24h grace/referral qualification
       if (previousBalance < MINIMUM_INITIAL_DEPOSIT && wallet.mainBalance >= MINIMUM_INITIAL_DEPOSIT) {
         if (!user.firstDepositAt) {
           user.firstDepositAt = new Date();
           await user.save();
-        }
-
-        // Trigger Direct Referral Bonus if applicable
-        const referralRecord = await Referral.findOne({ referredUser: user._id });
-
-        if (referralRecord) {
-          referralRecord.isPassiveEligible = true;
-
-          if (!referralRecord.hasTriggeredInitialBonus) {
-            // 50% referral bonus based on daily yield rate ($300 * 1% * 50% = $1.50)
-            const initialBaseTier = Math.floor(wallet.mainBalance / 100) * 100;
-            const directBonus = initialBaseTier * DAILY_YIELD_RATE * REFERRAL_DIRECT_PERCENTAGE;
-
-            const referrerWallet = await Wallet.findOne({ user: referralRecord.referrer });
-            if (referrerWallet) {
-              referrerWallet.referralBalance += directBonus;
-              await referrerWallet.save();
-
-              await Transaction.create({
-                user: referralRecord.referrer,
-                type: 'REFERRAL_DIRECT_BONUS',
-                amount: directBonus,
-                description: `50% initial referral reward on downstream deposit ($${wallet.mainBalance} USDT)`,
-              });
-
-              referralRecord.hasTriggeredInitialBonus = true;
-              referralRecord.totalEarnedFromUser += directBonus;
-            }
-          }
-
-          await referralRecord.save();
         }
       }
 
