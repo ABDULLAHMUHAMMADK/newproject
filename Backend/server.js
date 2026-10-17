@@ -1,4 +1,4 @@
-// server.js
+// Backend/server.js
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
@@ -26,52 +26,19 @@ connectDB();
 
 const app = express();
 
-// 1. Set Security HTTP Headers
+// 1. Enable Security HTTP Headers
 app.use(helmet());
 
-// 2. Prevent NoSQL Query Injection attacks
-app.use(mongoSanitize());
-
-// 3. Prevent HTTP Parameter Pollution
-app.use(hpp());
-
-// 4. Rate Limiting Rules
-// General API Rate Limiter (Max 100 requests per 15 minutes per IP)
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  message: {
-    success: false,
-    error: 'Too many requests from this IP, please try again after 15 minutes.',
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Strict Rate Limiter for Auth / Sensitive Endpoints (Max 10 attempts per 15 minutes)
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: {
-    success: false,
-    error: 'Too many login/registration attempts. Please try again after 15 minutes.',
-  },
-});
-
-// Apply General Rate Limiter to all API routes
-app.use('/api', generalLimiter);
-
-// 5. Configure Strict CORS
+// 2. Strict CORS Configuration
 const allowedOrigins = [
-  'http://localhost:3000', // React local dev server
-  'http://localhost:5173', // Vite local dev server
-  process.env.FRONTEND_URL, // Production Frontend URL from .env
+  'http://localhost:3000',
+  'http://localhost:5173',
+  process.env.FRONTEND_URL,
 ].filter(Boolean);
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, Bruno, or curl)
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -79,12 +46,46 @@ app.use(
       }
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
-app.use(express.json({ limit: '10kb' })); // Body limit to prevent large payload attacks
+// 3. Body Parser (Must be before sanitization)
+app.use(express.json({ limit: '10kb' }));
 
-// Mount API Routes with strict auth limiting
+// 4. Custom NoSQL Injection Sanitizer (Avoids req.query getter error)
+app.use((req, res, next) => {
+  if (req.body) {
+    req.body = mongoSanitize.sanitize(req.body, { replaceWith: '_' });
+  }
+  if (req.params) {
+    req.params = mongoSanitize.sanitize(req.params, { replaceWith: '_' });
+  }
+  next();
+});
+
+// 5. Prevent HTTP Parameter Pollution
+app.use(hpp());
+
+// 6. Rate Limiters
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { success: false, error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  message: { success: false, error: 'Too many auth attempts. Try again in 15 mins.' },
+});
+
+app.use('/api', generalLimiter);
+
+// 7. Mount API Routes
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/deposits', depositRoutes);
@@ -93,7 +94,7 @@ app.use('/api/withdrawals', withdrawalRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/referrals', referralRoutes);
 
-// Health Check Endpoint
+// Health Check
 app.get('/', (req, res) => {
   res.send({ status: 'API is running securely...' });
 });
