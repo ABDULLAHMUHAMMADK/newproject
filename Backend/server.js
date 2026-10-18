@@ -27,14 +27,14 @@ connectDB();
 
 const app = express();
 
-// 1. Enable Security HTTP Headers
+// 1. Enable Security HTTP Headers (Disable origin policy block for cross-site calls)
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginResourcePolicy: false,
   })
 );
 
-// 2. Dynamic CORS Configuration (Supports local dev, production, & Vercel preview branch URLs)
+// 2. Strict & Preflight-Friendly CORS Configuration
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
@@ -44,15 +44,11 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, postman)
-    if (!origin) return callback(null, true);
-
-    // Allow explicitly defined origins OR any dynamic Vercel deployment domain (*.vercel.app)
-    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-      return callback(null, true);
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Blocked by CORS policy: Origin not allowed'));
     }
-
-    return callback(new Error('Blocked by CORS policy: Origin not allowed'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -67,11 +63,28 @@ const corsOptions = {
   optionsSuccessStatus: 200,
 };
 
-// Enable CORS for all routes
 app.use(cors(corsOptions));
 
-// Explicitly handle browser preflight OPTIONS requests across all endpoints
-app.options('*', cors(corsOptions));
+// Force CORS headers on all raw responses as a failsafe
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  }
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token'
+  );
+
+  // Respond immediately with 200 OK to preflight OPTIONS
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  next();
+});
 
 // 3. Body Parser (Must run before NoSQL sanitization)
 app.use(express.json({ limit: '10kb' }));
