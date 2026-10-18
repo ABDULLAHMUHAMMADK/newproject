@@ -27,58 +27,25 @@ connectDB();
 
 const app = express();
 
-// 1. Enable Security HTTP Headers (Disable origin policy block for cross-site calls)
-app.use(
-  helmet({
-    crossOriginResourcePolicy: false,
-  })
-);
-
-// 2. Strict & Preflight-Friendly CORS Configuration
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'https://newproject-7gyb.vercel.app',
-  process.env.FRONTEND_URL,
-].filter(Boolean);
-
-const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Blocked by CORS policy: Origin not allowed'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin',
-    'X-CSRF-Token',
-  ],
-  optionsSuccessStatus: 200,
-};
-
-app.use(cors(corsOptions));
-
-// Force CORS headers on all raw responses as a failsafe
+// 1. Manual Failsafe CORS Header Injection
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
+  
+  // Allow production frontend, local dev, and Vercel preview domains
+  if (!origin || origin.includes('newproject-7gyb') || origin.includes('localhost') || origin.endsWith('.vercel.app')) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', 'https://newproject-7gyb.vercel.app');
   }
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
-  res.header(
+
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.setHeader(
     'Access-Control-Allow-Headers',
-    'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
 
-  // Respond immediately with 200 OK to preflight OPTIONS
+  // Return 200 immediately for preflight OPTIONS requests
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -86,10 +53,17 @@ app.use((req, res, next) => {
   next();
 });
 
-// 3. Body Parser (Must run before NoSQL sanitization)
+// 2. Enable Security HTTP Headers
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  })
+);
+
+// 3. Express Body Parser
 app.use(express.json({ limit: '10kb' }));
 
-// 4. Custom NoSQL Injection Sanitizer (Avoids req.query getter crash)
+// 4. Custom NoSQL Injection Sanitizer
 app.use((req, res, next) => {
   if (req.body) {
     req.body = mongoSanitize.sanitize(req.body, { replaceWith: '_' });
