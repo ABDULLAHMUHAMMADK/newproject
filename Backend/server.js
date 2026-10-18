@@ -22,6 +22,7 @@ import { initYieldCron } from './src/jobs/yieldCron.js';
 
 dotenv.config();
 
+// Connect to MongoDB Atlas
 connectDB();
 
 const app = express();
@@ -29,7 +30,7 @@ const app = express();
 // 1. Enable Security HTTP Headers
 app.use(helmet());
 
-// 2. Strict CORS Configuration
+// 2. Strict CORS Configuration (Handles local dev + Vercel dynamic URLs)
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
@@ -39,7 +40,8 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Allow requests with no origin (mobile apps, curl) or matching allowed origins / Vercel preview domains
+      if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
         callback(null, true);
       } else {
         callback(new Error('Blocked by CORS policy: Origin not allowed'));
@@ -51,10 +53,10 @@ app.use(
   })
 );
 
-// 3. Body Parser (Must be before sanitization)
+// 3. Body Parser (Must run before NoSQL sanitization)
 app.use(express.json({ limit: '10kb' }));
 
-// 4. Custom NoSQL Injection Sanitizer (Avoids req.query getter error)
+// 4. Custom NoSQL Injection Sanitizer (Avoids req.query getter crash)
 app.use((req, res, next) => {
   if (req.body) {
     req.body = mongoSanitize.sanitize(req.body, { replaceWith: '_' });
@@ -110,3 +112,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
+
+export default app;
