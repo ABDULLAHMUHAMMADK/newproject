@@ -28,30 +28,45 @@ connectDB();
 const app = express();
 
 // 1. Enable Security HTTP Headers
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
-// 2. Strict CORS Configuration (Handles local dev + Vercel dynamic URLs)
+// 2. Strict & Preflight-Friendly CORS Configuration
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
+  'https://newproject-7gyb.vercel.app',
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl) or matching allowed origins / Vercel preview domains
-      if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-        callback(null, true);
-      } else {
-        callback(new Error('Blocked by CORS policy: Origin not allowed'));
-      }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, serverless internal calls) or matching allowed origins / Vercel preview domains
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Blocked by CORS policy: Origin not allowed'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+  ],
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
+
+// Explicitly handle browser preflight OPTIONS requests across all routes
+app.options('*', cors(corsOptions));
 
 // 3. Body Parser (Must run before NoSQL sanitization)
 app.use(express.json({ limit: '10kb' }));
@@ -98,7 +113,7 @@ app.use('/api/referrals', referralRoutes);
 
 // Health Check
 app.get('/', (req, res) => {
-  res.send({ status: 'API is running securely... handrat' });
+  res.send({ status: 'API is running securely...' });
 });
 
 // Global Error Handler Middleware
