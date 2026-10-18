@@ -1,9 +1,12 @@
-// src/api/axiosInstance.js
+// Frontend/src/api/axiosInstance.js
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 
+// Live Vercel API production fallback URL
+const PRODUCTION_API_URL = 'https://newproject-eight-ashy.vercel.app/api';
+
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || PRODUCTION_API_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
