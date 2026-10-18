@@ -34,7 +34,7 @@ app.use(
   })
 );
 
-// 2. Strict & Preflight-Friendly CORS Configuration
+// 2. Dynamic CORS Configuration (Supports local dev, production, & Vercel preview branch URLs)
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
@@ -44,12 +44,15 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, serverless internal calls) or matching allowed origins / Vercel preview domains
-    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Blocked by CORS policy: Origin not allowed'));
+    // Allow requests with no origin (mobile apps, curl, postman)
+    if (!origin) return callback(null, true);
+
+    // Allow explicitly defined origins OR any dynamic Vercel deployment domain (*.vercel.app)
+    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      return callback(null, true);
     }
+
+    return callback(new Error('Blocked by CORS policy: Origin not allowed'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -59,13 +62,15 @@ const corsOptions = {
     'X-Requested-With',
     'Accept',
     'Origin',
+    'X-CSRF-Token',
   ],
   optionsSuccessStatus: 200,
 };
 
+// Enable CORS for all routes
 app.use(cors(corsOptions));
 
-// Explicitly handle browser preflight OPTIONS requests across all routes
+// Explicitly handle browser preflight OPTIONS requests across all endpoints
 app.options('*', cors(corsOptions));
 
 // 3. Body Parser (Must run before NoSQL sanitization)
