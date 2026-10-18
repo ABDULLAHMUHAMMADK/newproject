@@ -98,7 +98,7 @@ app.use('/api/referrals', referralRoutes);
 
 // Health Check
 app.get('/', (req, res) => {
-  res.send({ status: 'API is running securely...' });
+  res.send({ status: 'API is running securely... handrat' });
 });
 
 // Global Error Handler Middleware
